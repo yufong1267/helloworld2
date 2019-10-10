@@ -9,7 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace Shortest_Job_First
+namespace Round_Robin_Algorithm
 {
     public partial class Form1 : Form
     {
@@ -18,28 +18,20 @@ namespace Shortest_Job_First
             InitializeComponent();
         }
 
+        public int Quantum = 0;
+        public int[] order = new int[100];
+        public int total_time = 0, process_num = 0;
 
-        ProcessPPP[] process = new ProcessPPP[100];
-        
-        public int total_time = 0 , process_num = 0;
-        public bool[] check = new bool[100];
-        public string reg = "";
-
-        int[] num = new int[100]; //宣告一個存取所有擷取出來的數字
-
-        private void clear() {
-            for(int i = 0; i < 100; i++)
-            {
-                check[i] = false;             
-            }
-        }
+        public string reg = ""; //拉進來的檔案 先放進string
+        public int[] num = new int[100];
         private void button1_Click(object sender, EventArgs e)
         {
+            ProcessPPP[] process = new ProcessPPP[100];
             //初始化
-            for(int i = 0; i < 100; i++)
+            for (int i = 0; i < 100; i++)
             {
                 process[i] = null;
-                check[i] = false;
+                order[i] = 0;
                 num[i] = 0;
             }
 
@@ -53,11 +45,12 @@ namespace Shortest_Job_First
                 var sr = new StreamReader(dialog.FileName);
                 reg = sr.ReadToEnd();
             }
-            MessageBox.Show("" + reg);
 
+            
             string reg1 = "";
             int num_index = 0;
             bool check2 = false;
+
             //做字串處理
             for (int i = 0; i < reg.Length - 1; i++)
             {
@@ -69,78 +62,75 @@ namespace Shortest_Job_First
 
                 }
                 //如果下一位不是數字 就可以轉換了
-                if ((reg[i + 1] <= '0' || reg[i + 1] >= '9') && check2)
+                if ((reg[i + 1] < '0' || reg[i + 1] > '9') && check2)
                 {
                     num[num_index] = Int32.Parse(reg1);
                     reg1 = "";
                     num_index++;
                 }
             }
-
             
-            total_time = 0;
-
 
             //input data
-            /*process[0] = new ProcessPPP(3, 3);
-            process[1] = new ProcessPPP(0, 6);
-            process[2] = new ProcessPPP(1, 4);
-            total_time = process[0].BurstTime + process[1].BurstTime + process[2].BurstTime;*/
-            for(int i = 0; i < num_index/4; i++)
+            //process_num = 3;
+            process_num = (num_index - 1) / 3;
+           /*  process[0] = new ProcessPPP(8);
+             process[1] = new ProcessPPP(4);
+             process[2] = new ProcessPPP(12);
+             total_time = process[0].BurstTime + process[1].BurstTime + process[2].BurstTime;*/
+            for (int i = 0; i < ((num_index-1)) / 3; i++)
             {
-                process[i] = new ProcessPPP(num[i * 4 + 2], num[i * 4 + 3]);
+                process[i] = new ProcessPPP(num[i * 2 + 1]);
+                order[i] = num[process_num * 2 + i];
                 total_time += process[i].BurstTime;
             }
-            //process_num = 3;
-            process_num = num_index / 4;
-            /////////////////////////////////////////
 
-            
-            string final_ans = "";
-            //計算每個時間點的工作process
-            for (int i = 0; i < total_time; i++)
+            /*  order[0] = 3;
+              order[1] = 1;
+              order[2] = 2;*/
+            //Quantum = 4;
+            Quantum = num[num_index-1];
+            ////////////////////////
+
+            /*
+             計算每個時間點是誰的process在工作
+             */
+            string final_answer = "";
+            int index_counter = 0;
+            bool check = false; //檢查是不是都有做到輸出，不然結果會少
+            int time_jump = Quantum;
+            for(int i = 0; i < total_time; i += time_jump)
             {
-                //每次都要重新計算重複的部分
-                clear();
-                for(int j = 0; j < process_num; j++)
+                check = false;
+                while(!check)
                 {
-                    if(process[j].ArricalTime == i)
-                    {
-                        check[j] = true;
-                    }
-                }
-
-                //獲得所有重複裡面BurstTime最小的那個process
-                int minest_process = select_small();
-                final_ans += "P" + (minest_process + 1) + "  "+ i + "~" + (i + 1) + "\n";
-                //做起點跟距離的更新
-                for(int j = 0; j < process_num; j++)
-                {
-                    if(check[j] == true && j == minest_process)
-                    {
-                        process[j].ArricalTime++;
-                        process[j].BurstTime--;
-                    }
-                    else if(check[j] == true)
-                    {
-                        process[j].ArricalTime++;
-                    }
+                      if (process[order[index_counter % process_num] - 1].BurstTime > 0)
+                      {
+                               if(process[order[index_counter % process_num] - 1].BurstTime >= Quantum)
+                                {
+                                  final_answer += "second " + i + "~" + (i + Quantum) + " process p" + order[index_counter % process_num];
+                                  final_answer += "\n";
+                                  process[order[index_counter % process_num] - 1].BurstTime -= Quantum;
+                                  check = true; //做出結果可以跳出
+                                  time_jump = Quantum;
+                                }
+                                 else
+                                 {
+                            int cc = process[order[index_counter % process_num] - 1].BurstTime;
+                            final_answer += "second " + i + "~" + (i + cc) + " process p" + order[index_counter % process_num];
+                            final_answer += "\n";
+                            process[order[index_counter % process_num] - 1].BurstTime -= cc;
+                            check = true; //做出結果可以跳出
+                            time_jump = cc;
+                        }
+                               
+                      }
+                         index_counter++;
                 }
             }
-            MessageBox.Show(final_ans);
-        }
+            MessageBox.Show(final_answer);
 
-        public int select_small() {
-            int r = 0 , min = 999999;
-            for(int i = 0; i < process_num; i++)
-            {
-                if(check[i] == true && process[i].BurstTime < min && process[i].BurstTime > 0)
-                {
-                    min = process[i].BurstTime;
-                    r = i;
-                }
-            }
-            return r;
+
         }
     }
 }
